@@ -26,6 +26,7 @@ Rasterizer::Rasterizer(const int width, const int height, float fov, Vector3 eye
 	n_ = n;
 	f_ = f;
 	camera_ = Camera(width, height,  fov, eye, target, n, f);
+	//mouse_ = new Mouse(camera_);
 }
 
 void framebuffer_resize_callback(GLFWwindow* window, int width, int height)
@@ -51,9 +52,21 @@ void GLAPIENTRY gl_callback(GLenum source, GLenum type, GLuint id, GLenum severi
 		type, severity, message);
 }
 
+extern void cursor_pos_callback(GLFWwindow * window, double mouseX, double mouseY)
+{
+	((Camera*)(glfwGetWindowUserPointer(window)))->mouseMovement(window, mouseX, mouseY);
+}
+
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	((Camera*)(glfwGetWindowUserPointer(window)))->mouseClick(window, button, action, mods);
+}
 
 
 int Rasterizer::InitDevice() {
+	
+
 	glfwSetErrorCallback(glfw_callback);
 
 	if (!glfwInit())
@@ -102,6 +115,10 @@ int Rasterizer::InitDevice() {
 	glViewport(0, 0, width_, height_);
 	// GL_LOWER_LEFT (OpenGL) or GL_UPPER_LEFT (DirectX, Windows) and GL_NEGATIVE_ONE_TO_ONE or GL_ZERO_TO_ONE
 	glClipControl(GL_UPPER_LEFT, GL_NEGATIVE_ONE_TO_ONE);
+
+	glfwSetWindowUserPointer(window, (void*)&camera_);
+	glfwSetCursorPosCallback(window, cursor_pos_callback);
+	glfwSetMouseButtonCallback(window, mouse_button_callback);
 }
 
 
@@ -288,13 +305,16 @@ void Rasterizer::MainLoop() {
 	Matrix4x4 model = Matrix4x4();
 	Matrix4x4 normal = Matrix4x4();
 
+	//camera_.Update();
+
 	// main loop
 	while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwGetKey(window, GLFW_KEY_Q) != GLFW_PRESS && !glfwWindowShouldClose(window)) {
-
 		// Measure speed
 		double currentTime = glfwGetTime();
 		nbFrames++;
-		if (currentTime - lastTime >= 1.0) { // If last prinf() was more than 1 sec ago
+		float deltaTime = currentTime - lastTime;
+
+		if ( deltaTime >= 1.0) { // If last prinf() was more than 1 sec ago
 			// printf and reset timer
 			std::printf("%f ms/frame\n", 1000.0 / double(nbFrames));
 			nbFrames = 0;
@@ -302,7 +322,9 @@ void Rasterizer::MainLoop() {
 		}
 
 
+		camera_.processInput(window, deltaTime);
 		camera_.Update();
+		
 
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // sc_str()tate setting function
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // state using function
@@ -315,10 +337,6 @@ void Rasterizer::MainLoop() {
 		SetMatrix4x4(shader_program_, normal.data(), "mvn");
 		SetMatrix4x4(shader_program_, model.data(), "mv");
 		SetVector3(shader_program_, camera_.viewFrom(), "viewPos");
-
-	/*	SetMatrix4x4(shader_program_, model.data(), "m");
-		SetMatrix4x4(shader_program_, camera_.view().data(), "v");
-		SetMatrix4x4(shader_program_, camera_.projection().data(), "p");*/
 
 		glBindVertexArray(vao_);
 		glBindVertexArray(vbo_);
@@ -339,6 +357,7 @@ void Rasterizer::MainLoop() {
 
 	glDeleteBuffers(1, &vbo_);
 	glDeleteVertexArrays(1, &vao_);
+
 
 	glfwTerminate();
 

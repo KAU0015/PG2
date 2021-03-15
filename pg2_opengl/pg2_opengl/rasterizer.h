@@ -29,6 +29,10 @@ public:
 	char* LoadShader(const char* file_name);
 	GLint CheckShader(const GLenum shader);
 
+	//Mouse* mouse_;
+
+	//void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+	//void cursor_pos_callback(GLFWwindow* window, double mouseX, double mouseY);
 
 private:
 	int width_;
@@ -46,7 +50,7 @@ private:
 	GLuint vao_ = 0;
 	GLuint vbo_ = 0;
 	GLuint ebo_ = 0;
-
+	
 
 	GLFWwindow* window;
 
@@ -58,6 +62,9 @@ private:
 	int vertices_length_ = 0;
 	int number_of_verticies_ = 0;
 	int vertex_stride_ = 0;
+
+
+	
 
 
 };

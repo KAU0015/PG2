@@ -25,11 +25,21 @@ public:
 	void UpdateProjection();
 
 	void MoveForward( const float dt );
+	void MoveBackward(const float dt);
+	void MoveLeft(const float dt);
+	void MoveRight(const float dt);
 
 	Matrix4x4 projection();
 	Matrix4x4 view();
 
 	Vector3 viewFrom();
+
+	void setViewAt(Vector3 view_at);
+
+	void mouseMovement(GLFWwindow* window, double mouse_x, double mouse_y);
+	void mouseClick(GLFWwindow* window, int button, int action, int mods);
+	void processInput(GLFWwindow* window, float deltaTime);
+	void updateCameraVectors();
 
 private:
 	int width_{ 640 }; // image width (px)
@@ -49,6 +59,14 @@ private:
 
 	Matrix4x4 view_;
 	Matrix4x4 projection_;
+
+	bool first_mouse_ = true;
+	double last_x_, last_y_;
+	float pitch_ = -90.0f; //-90
+	bool clicked_ = false;
+	float yaw_ = 0.0f; //0
+//	float clicked_x_, clicked_y_;
+	bool clicked_left_ = false;
 };
 
 #endif
