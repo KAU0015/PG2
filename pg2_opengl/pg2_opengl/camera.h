@@ -62,11 +62,13 @@ private:
 
 	bool first_mouse_ = true;
 	double last_x_, last_y_;
-	float pitch_ = -90.0f; //-90
+	float pitch_ = 0.0f; //-90
 	bool clicked_ = false;
 	float yaw_ = 0.0f; //0
 //	float clicked_x_, clicked_y_;
 	bool clicked_left_ = false;
+
+	bool rotated_ = false;
 };
 
 #endif

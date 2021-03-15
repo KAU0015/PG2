@@ -25,7 +25,7 @@ Camera::Camera( const int width, const int height, const float fov_y,
 	
 	// TODO build M_c_w_ matrix
 
-	//updateCameraVectors();
+	updateCameraVectors();
 	Update();
 
 }
@@ -56,14 +56,6 @@ void Camera::Update()
 {
 	
 	f_y_ = height_ / ( 2.0f * tanf( fov_y_ * 0.5f ) );
-
-/*	Vector3 z_c = view_from_ - view_at_;
-	z_c.Normalize();
-	Vector3 x_c = up_.CrossProduct( z_c );
-	x_c.Normalize();
-	Vector3 y_c = z_c.CrossProduct( x_c );
-	y_c.Normalize();
-	M_c_w_ = Matrix3x3( x_c, y_c, z_c );*/
 
 	UpdateView();
 	UpdateProjection();
@@ -190,7 +182,7 @@ void Camera::mouseMovement(GLFWwindow* window, double mouseX, double mouseY)
 	{
 
 
-		float sensitivtiy = 0.1f;
+		float sensitivtiy = 0.05f;
 		xOffSet *= sensitivtiy;
 		yOffSet *= sensitivtiy;
 
@@ -204,8 +196,8 @@ void Camera::mouseMovement(GLFWwindow* window, double mouseX, double mouseY)
 		{
 			pitch_ = -89.0f;
 		}
-
 		updateCameraVectors();
+
 	}
 	else if (clicked_left_)
 	{
@@ -240,7 +232,7 @@ void Camera::mouseClick(GLFWwindow* window, int button, int action, int mods)
 
 void Camera::processInput(GLFWwindow* window, float deltaTime)
 {
-	float velocity = 0.5f/* * deltaTime*/;
+	float velocity = 0.25f/* * deltaTime*/;
 
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
@@ -265,17 +257,18 @@ void Camera::processInput(GLFWwindow* window, float deltaTime)
 void Camera::updateCameraVectors()
 {
 
-	Vector3 new_view_at;
-	new_view_at.x = cos(deg2rad(yaw_)) * cos(deg2rad(pitch_));
-	new_view_at.z = sin(deg2rad(pitch_));
-	new_view_at.y = sin(deg2rad(yaw_)) * cos(deg2rad(pitch_));
-	view_at_ = new_view_at;
-	//view_at_.Normalize();
+	Vector3 vFrom = Vector3{ 0, 0 , 0 };
+	Vector3 vAt = view_at_ - view_from_;
+	Vector3 dir = vAt - vFrom;
+	float pt = -deg2rad(pitch_);
+	float yaw = -deg2rad(yaw_);
 
+	Matrix3x3 xRot = { 1.0f, 0.0f, 0.0f, 0.0f, cosf(pt), -sinf(pt), 0.0f, sinf(pt), cosf(pt) };
+	Matrix3x3 zRot = { cosf(yaw), -sinf(yaw), 0.0f, sinf(yaw), cosf(yaw), 0.0f, 0.0f, 0.0f, 1.0f };
 
-	// also re-calculate the Right and Up vector
-/*	right_ = view_at_.CrossProduct(world_up_);
-	right_.Normalize();
-	up_ = right_.CrossProduct(view_at_);
-	up_.Normalize();*/
+	float distance = sqrt(pow(vAt.x - vFrom.x, 2.0) + pow(vAt.y - vFrom.y, 2.0) + pow(vAt.z - vFrom.z, 2.0));
+
+	Vector3 result = zRot * xRot * Vector3(0.0f, distance, 0.0f);
+
+	view_at_ = result + view_from_;
 }
