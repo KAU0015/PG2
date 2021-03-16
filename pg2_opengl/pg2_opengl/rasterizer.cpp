@@ -114,7 +114,7 @@ int Rasterizer::InitDevice() {
 	// map from the range of NDC coordinates <-1.0, 1.0>^2 to <0, width> x <0, height>
 	glViewport(0, 0, width_, height_);
 	// GL_LOWER_LEFT (OpenGL) or GL_UPPER_LEFT (DirectX, Windows) and GL_NEGATIVE_ONE_TO_ONE or GL_ZERO_TO_ONE
-	glClipControl(GL_UPPER_LEFT, GL_NEGATIVE_ONE_TO_ONE);
+	glClipControl(GL_LOWER_LEFT, GL_NEGATIVE_ONE_TO_ONE);
 
 	glfwSetWindowUserPointer(window, (void*)&camera_);
 	glfwSetCursorPosCallback(window, cursor_pos_callback);
@@ -262,6 +262,27 @@ void Rasterizer::LoadScene(const char* file_name) {
 				object_data_.push_back(vertex.normal.y);
 				object_data_.push_back(vertex.normal.z);
 
+
+				Material* material = surface->get_material();
+
+				Color3f ambient = material->ambient_;
+				Color3f diffuse = material->diffuse_;
+				Color3f specular = material->specular_;
+				
+
+				object_data_.push_back(ambient.data[0]);
+				object_data_.push_back(ambient.data[1]);
+				object_data_.push_back(ambient.data[2]);
+
+				object_data_.push_back(diffuse.data[0]);
+				object_data_.push_back(diffuse.data[1]);
+				object_data_.push_back(diffuse.data[2]);
+
+				object_data_.push_back(specular.data[0]);
+				object_data_.push_back(specular.data[1]);
+				object_data_.push_back(specular.data[2]);
+
+				
 				// Push texture coords
 				//vertex_data.push_back(vertex.texture_coords->u);
 				//vertex_data.push_back(vertex.texture_coords->v);
@@ -289,8 +310,13 @@ void Rasterizer::InitBuffers() {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertex_stride_, 0);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, vertex_stride_, (void*)(sizeof(GLfloat)*3));
-
 	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, vertex_stride_, (void*)(sizeof(GLfloat) * 6));
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, vertex_stride_, (void*)(sizeof(GLfloat) * 9));
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, vertex_stride_, (void*)(sizeof(GLfloat) * 12));
+	glEnableVertexAttribArray(4);
 }
 
 void Rasterizer::MainLoop() {
@@ -334,8 +360,8 @@ void Rasterizer::MainLoop() {
 		Matrix4x4 mvp = camera_.projection() * camera_.view() * model;
 
 		SetMatrix4x4(shader_program_, mvp.data(), "mvp");
-		SetMatrix4x4(shader_program_, normal.data(), "mvn");
-		SetMatrix4x4(shader_program_, model.data(), "mv");
+		SetMatrix4x4(shader_program_, (normal).data(), "mvn");
+		SetMatrix4x4(shader_program_, ( model).data(), "mv");
 		SetVector3(shader_program_, camera_.viewFrom(), "viewPos");
 
 		glBindVertexArray(vao_);
