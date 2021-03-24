@@ -268,11 +268,11 @@ void Rasterizer::LoadScene(const char* file_name) {
 				Color3f ambient = material->ambient_;
 				Color3f diffuse = material->diffuse_;
 				Color3f specular = material->specular_;
-				
 
 				object_data_.push_back(ambient.data[0]);
 				object_data_.push_back(ambient.data[1]);
 				object_data_.push_back(ambient.data[2]);
+
 
 				object_data_.push_back(diffuse.data[0]);
 				object_data_.push_back(diffuse.data[1]);
@@ -281,6 +281,16 @@ void Rasterizer::LoadScene(const char* file_name) {
 				object_data_.push_back(specular.data[0]);
 				object_data_.push_back(specular.data[1]);
 				object_data_.push_back(specular.data[2]);
+
+				
+				Coord2f uv = vertex.texture_coords[0];
+
+				object_data_.push_back(uv.u);
+				object_data_.push_back(uv.v);
+
+
+
+			//	Texture3f texture = 
 
 				
 				// Push texture coords
@@ -295,6 +305,75 @@ void Rasterizer::LoadScene(const char* file_name) {
 	vertex_stride_ = (object_data_.size() * sizeof(GLfloat)) / number_of_verticies_;
 	vertices_length_ = object_data_.size() * sizeof(GLfloat);
 
+
+	GLMaterialPBR* gl_materials = new GLMaterialPBR[materials_.size()];
+	int m = 0;
+	for (const auto& material : materials_) {
+		Texture3u* tex_diffuse = material->texture(Material::kDiffuseMapSlot);
+		gl_materials[m].diffuse = material->diffuse_;
+
+		if (tex_diffuse) {
+			GLuint id = 0;
+			CreateBindlessTexture(id, gl_materials[m].tex_diffuse_handle, tex_diffuse->width(), tex_diffuse->height(), (GLubyte*)tex_diffuse->data());
+		}
+		else {
+			GLuint id = 0;
+			GLubyte data[] = { 255, 255, 255, 255 }; // opaque white
+			CreateBindlessTexture(id, gl_materials[m].tex_diffuse_handle, 1, 1, data); // white texture
+		}
+		Texture3u* tex_norm = material->texture(Material::kNormalMapSlot);
+		if (tex_norm) {
+			GLuint id = 0;
+			CreateBindlessTexture(id, gl_materials[m].tex_normal_handle, tex_norm->width(), tex_norm->height(), (GLubyte*)tex_norm->data());
+			gl_materials[m].normal = Color3f({ -1.f, -1.f, -1.f }); // -1 indicates to use texture
+		}
+		else {
+			GLuint id = 0;
+			GLubyte data[] = { 255, 255, 255, 255 }; // opaque white
+			CreateBindlessTexture(id, gl_materials[m].tex_normal_handle, 1, 1, data); // white texture
+			gl_materials[m].normal = Color3f({ 1.f, 1.f, 1.f });
+		}
+		Texture3u* tex_rma = material->texture(Material::kRoughnessMapSlot);
+		if (tex_rma) {
+			GLuint id = 0;
+			CreateBindlessTexture(id, gl_materials[m].tex_rma_handle, tex_rma->width(), tex_rma->height(), (GLubyte*)tex_rma->data());
+			gl_materials[m].rma = Color3f({ 1.0,1.0, material->ior });
+
+		}
+		else {
+			GLuint id = 0;
+			GLubyte data[] = { 255, 255, 255, 255 }; // opaque white
+			CreateBindlessTexture(id, gl_materials[m].tex_rma_handle, 1, 1, data); // white texture
+			gl_materials[m].rma = Color3f({ material->roughness_, material->metallicness, material->ior });
+		}
+		m++;
+	}
+	GLuint ssbo_materials = 0;
+	glGenBuffers(1, &ssbo_materials);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_materials);
+	const GLsizeiptr gl_materials_size = sizeof(GLMaterialPBR) * materials_.size();
+	glBufferData(GL_SHADER_STORAGE_BUFFER, gl_materials_size, gl_materials, GL_STATIC_DRAW);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo_materials);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+
+}
+
+
+void Rasterizer::CreateBindlessTexture(GLuint& texture, GLuint64& handle, const int width, const int height, unsigned char* data)
+{
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture); // bind empty texture object to the target
+	// set the texture wrapping/filtering options
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	// copy data from the host buffer
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	//glBindTexture(GL_TEXTURE_2D, 0); // unbind the newly created texture from the target
+	handle = glGetTextureHandleARB(texture); // produces a handle representing the texture in a shader function
+	glMakeTextureHandleResidentARB(handle);
 }
 
 
@@ -317,6 +396,8 @@ void Rasterizer::InitBuffers() {
 	glEnableVertexAttribArray(3);
 	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, vertex_stride_, (void*)(sizeof(GLfloat) * 12));
 	glEnableVertexAttribArray(4);
+	glVertexAttribPointer(5, 2, GL_FLOAT, GL_FALSE, vertex_stride_, (void*)(sizeof(GLfloat) * 15));
+	glEnableVertexAttribArray(5);
 }
 
 void Rasterizer::MainLoop() {
@@ -324,12 +405,12 @@ void Rasterizer::MainLoop() {
 	
 
 	// Turn off VSYNC
-	glfwSwapInterval(0);
+	glfwSwapInterval(1);
 	double lastTime = glfwGetTime();
 	int nbFrames = 0;
 
 	Matrix4x4 model = Matrix4x4();
-	Matrix4x4 normal = Matrix4x4();
+
 
 	//camera_.Update();
 
@@ -357,18 +438,24 @@ void Rasterizer::MainLoop() {
 
 		glUseProgram(shader_program_);
 
-		Matrix4x4 mvp = camera_.projection() * camera_.view() * model;
+		Matrix4x4 view = camera_.view();
+
+		Matrix4x4 mvp = camera_.projection() * view * model;
+
+		Matrix4x4 mvn =  model;
+		mvn.EuclideanInverse();
+		mvn.Transpose();
 
 		SetMatrix4x4(shader_program_, mvp.data(), "mvp");
-		SetMatrix4x4(shader_program_, (normal).data(), "mvn");
-		SetMatrix4x4(shader_program_, ( model).data(), "mv");
+		SetMatrix4x4(shader_program_, mvn.data(), "mvn");
+		SetMatrix4x4(shader_program_, (model).data(), "mv");
 		SetVector3(shader_program_, camera_.viewFrom(), "viewPos");
 
 		glBindVertexArray(vao_);
 		glBindVertexArray(vbo_);
 
 		//Draw triangles
-		glDrawArrays(GL_TRIANGLES, 0, number_of_verticies_ * 3);
+		glDrawArrays(GL_TRIANGLES, 0, number_of_verticies_ *3);
 	//	glDrawArrays(GL_POINTS, 0, number_of_verticies_*3);
 		//glDrawArrays(GL_LINE_LOOP, 0, number_of_verticies_ * 3);
 		//glDrawElements( GL_TRIANGLES, no_of_verticies * 3, GL_UNSIGNED_INT, 0 ); // optional - render from an index buffer
@@ -390,6 +477,82 @@ void Rasterizer::MainLoop() {
 	printf("Safely terminated.");
 	
 }
+
+void Rasterizer::InitIrradianceMap(const char* file_name) {
+	Texture3f texture(file_name);
+
+	glGenTextures(1, &tex_ir_map_);
+	glBindTexture(GL_TEXTURE_2D, tex_ir_map_);
+	if (glIsTexture(tex_ir_map_)) {
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, texture.width(), texture.height(), 0, GL_RGB, GL_FLOAT, texture.data());
+
+		glUseProgram(shader_program_);
+		handle_ir_map_ = glGetTextureHandleARB(tex_ir_map_);
+		glMakeTextureHandleResidentARB(handle_ir_map_);
+		SetHandle(shader_program_, handle_ir_map_, "irradianceMap");
+	}
+}
+
+void Rasterizer::InitGGXIntegrMap(const char* file_name) {
+	Texture3f texture(file_name);
+
+	glGenTextures(1, &tex_brdf_map_);
+	glBindTexture(GL_TEXTURE_2D, tex_brdf_map_);
+	if (glIsTexture(tex_brdf_map_)) {
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, texture.width(), texture.height(), 0, GL_RGB, GL_FLOAT, texture.data());
+
+		glUseProgram(shader_program_);
+		handle_brdf_map_ = glGetTextureHandleARB(tex_brdf_map_);
+
+		glMakeTextureHandleResidentARB(handle_brdf_map_);
+		SetHandle(shader_program_, handle_brdf_map_, "ggxMap");
+	}
+
+}
+
+
+void Rasterizer::InitPrefilteredEnvMap(vector<const char*> file_names) {
+
+	int maxLevel = file_names.size() - 1;
+	int i = 0;
+	glGenTextures(1, &tex_env_map_);
+	glBindTexture(GL_TEXTURE_2D, tex_env_map_);
+	if (glIsTexture(tex_env_map_)) {
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, file_names.size() - 1);
+
+
+		for (auto file : file_names)
+		{
+			Texture3f texture(file);
+
+			glTexImage2D(GL_TEXTURE_2D, i, GL_RGB32F, texture.width(), texture.height(), 0, GL_RGB, GL_FLOAT, texture.data());
+			i++;
+		}
+		glUseProgram(shader_program_);
+		handle_env_map_ = glGetTextureHandleARB(tex_env_map_);
+		glMakeTextureHandleResidentARB(handle_env_map_);
+		SetHandle(shader_program_, handle_env_map_, "environmentMap");
+		SetInt(shader_program_, maxLevel, "maxLevel");
+	}
+}
+
 
 
 

@@ -6,6 +6,7 @@
 #include <float.h>
 #include "structs.h"
 #include "matrix3x3.h"
+#include <FreeImage.h>
 
 template <class T> inline T min( const T a, const T b )
 {

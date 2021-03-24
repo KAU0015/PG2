@@ -30,6 +30,34 @@ void SetVector3(const GLuint program,  Vector3 data, const char* vector_name)
 		vec[1] = data.y;
 		vec[2] = data.z;
 
-		glUniform3fv(location, 1, vec);
+		glUniform3fv(location, 1, data.data);
+	}
+}
+void SetHandle(const GLuint program, GLuint64 texture_handle, const char* sampler_name)
+{
+	const GLint location = glGetUniformLocation(program, sampler_name);
+	if (location == -1)
+	{
+		printf("Texture handle '%s' not found in active shader.\n", sampler_name);
+	}
+	else
+	{
+		GLuint msb = (GLuint)(texture_handle >> 32);
+		GLuint lsb = (GLuint)texture_handle;
+		glUniform2ui(location, lsb, msb);
+	}
+}
+
+void SetInt(const GLuint program, const GLint data, const char* name)
+{
+	const GLint location = glGetUniformLocation(program, name);
+
+	if (location == -1)
+	{
+		printf("Int '%s' not found in active shader.\n", name);
+	}
+	else
+	{
+		glUniform1i(location, data);
 	}
 }

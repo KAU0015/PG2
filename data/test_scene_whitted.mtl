@@ -1,0 +1,50 @@
+# Blender MTL File: 'test_scene_whitted.blend'
+# Material Count: 4
+
+newmtl Material.001
+	Ns 32
+	Ni 1.460
+	d 1
+	Tr 0
+	Tf 1 1 1
+	illum 2
+	Ka 0.03 0.03 0.03
+	Kd 0.95 0.95 0.95
+	Ks 1.0. 1.0 1.0
+	shader 3
+
+newmtl Matne
+	Ns 32
+	Ni 1.460
+	d 1
+	Tr 0
+	Tf 1 1 1
+	illum 2
+	Ka 0.00 0.03 0.00
+	Kd 0.95 0.0 0.0
+	Ks 1.0. 0.0 0.0
+	shader 3
+
+newmtl Metal
+	Ns 32
+	Ni 1.500
+	d 1
+	Tr 0
+	Tf 0.4 0.001 0.4 
+	illum 2
+	Ka 0.03 0.03 0.03
+	Kd 0.85 1.0 0.01
+	Ks 1.0. 1.0 1.0
+	shader 4
+
+newmtl Sklo
+	Ns 32
+	Ni 1.500
+	d 1
+	Tr 0
+	Tf 0.4 0.001 0.4 
+	illum 2
+	Ka 0.03 0.03 0.03
+	Kd 0.85 1.0 0.01
+	Ks 1.0. 1.0 1.0
+	shader 4

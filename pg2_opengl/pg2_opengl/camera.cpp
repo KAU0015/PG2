@@ -29,22 +29,11 @@ Camera::Camera( const int width, const int height, const float fov_y,
 	Vector3 vFrom = Vector3{ 0, 0 , 0 };
 	Vector3 vAt = view_at_ - view_from_;
 	Vector3 dir = vAt - vFrom;
-	float sizeOfDir = sqrt(pow(dir.x, 2)+ pow(dir.y,2) + pow(dir.z, 2));
-	//pitch_ = rad2deg(acosf(dir.DotProduct(Vector3{ 1.0f, 0.0f, 0.0f })/sizeOfDir));
-	//yaw_ = rad2deg(acosf(dir.DotProduct(Vector3{ 0.0f, 0.0f, 1.0f })/sizeOfDir));
+	dir.Normalize();
+	yaw_ = -rad2deg(atan2f(dir.y, dir.x) - float(M_PI_2));
+	pitch_ = rad2deg(acosf(-dir.z) - float(M_PI_2));
 
-	float pt = deg2rad(pitch_);
-	float yaw = -deg2rad(yaw_);
-
-	Matrix3x3 xRot = { 1.0f, 0.0f, 0.0f, 0.0f, cosf(pt), -sinf(pt), 0.0f, sinf(pt), cosf(pt) };
-	Matrix3x3 zRot = { cosf(yaw), -sinf(yaw), 0.0f, sinf(yaw), cosf(yaw), 0.0f, 0.0f, 0.0f, 1.0f };
-
-	float distance = sqrt(pow(vAt.x - vFrom.x, 2.0) + pow(vAt.y - vFrom.y, 2.0) + pow(vAt.z - vFrom.z, 2.0));
-
-	Vector3 result = zRot * xRot * Vector3(0.0f, distance, 0.0f);
-
-	view_at_ = result + view_from_;
-//	updateCameraVectors();
+	updateCameraVectors();
 	Update();
 
 }
@@ -251,7 +240,7 @@ void Camera::mouseClick(GLFWwindow* window, int button, int action, int mods)
 
 void Camera::processInput(GLFWwindow* window, float deltaTime)
 {
-	float velocity = 0.25f/* * deltaTime*/;
+	float velocity = 2.5f/* * deltaTime*/;
 
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {

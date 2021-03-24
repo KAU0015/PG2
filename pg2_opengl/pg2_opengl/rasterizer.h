@@ -7,6 +7,10 @@
 #include "surface.h"
 #include "triangle.h"
 #include "objloader.h"
+#include "glutils.h"
+#include "mymath.h"
+#include "vertex.h"
+#include "texture.h"
 
 using namespace std;
 
@@ -22,12 +26,14 @@ public:
 	void InitBuffers();
 	void InitMaterials(int material);
 	void InitIrradianceMap(const char* file_name); // inicializace předpočítaných map pro Cook-Torrance GGX shader 
-	void InitPrefilteredEnvMap(std::string* file_names[]);
+	void InitPrefilteredEnvMap(vector<const char*> file_names);
 	void InitGGXIntegrMap(const char* file_name);
 	void MainLoop();
 
 	char* LoadShader(const char* file_name);
 	GLint CheckShader(const GLenum shader);
+
+	void CreateBindlessTexture(GLuint& texture, GLuint64& handle, const int width, const int height, unsigned char* data);
 
 	//Mouse* mouse_;
 
@@ -51,9 +57,16 @@ private:
 	GLuint vbo_ = 0;
 	GLuint ebo_ = 0;
 	
+	GLuint64 handle_brdf_map_{ 0 };
+	GLuint64 handle_env_map_{ 0 };
+	GLuint64 handle_ir_map_{ 0 };
+
+	GLuint tex_brdf_map_{ 0 };
+	GLuint tex_env_map_{ 0 };
+	GLuint tex_ir_map_{ 0 };
 
 	GLFWwindow* window;
-
+	int no_triangles;
 	vector<Surface*> surfaces_;
 	vector<Material*> materials_;
 
