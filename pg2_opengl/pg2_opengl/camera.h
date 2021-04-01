@@ -21,6 +21,7 @@ public:
 	void set_fov_y( const float fov_y );
 
 	void Update();
+	void Update(int width, int height);
 	void UpdateView();
 	void UpdateProjection();
 
@@ -40,6 +41,8 @@ public:
 	void mouseClick(GLFWwindow* window, int button, int action, int mods);
 	void processInput(GLFWwindow* window, float deltaTime);
 	void updateCameraVectors();
+	int width();
+	int height();
 
 private:
 	int width_{ 640 }; // image width (px)

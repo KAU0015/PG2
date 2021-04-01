@@ -11,6 +11,7 @@
 #include "mymath.h"
 #include "vertex.h"
 #include "texture.h"
+#include "light.h"
 
 using namespace std;
 
@@ -22,6 +23,7 @@ public:
 
 	int InitDevice();
 	void InitPrograms();
+	void InitShadowPrograms();
 	void LoadScene(const char* file_name);
 	void InitBuffers();
 	void InitMaterials(int material);
@@ -34,6 +36,8 @@ public:
 	GLint CheckShader(const GLenum shader);
 
 	void CreateBindlessTexture(GLuint& texture, GLuint64& handle, const int width, const int height, unsigned char* data);
+	void InitShadowDepthbuffer();
+	int Resize(const int width, const int height);
 
 	//Mouse* mouse_;
 
@@ -64,6 +68,16 @@ private:
 	GLuint tex_brdf_map_{ 0 };
 	GLuint tex_env_map_{ 0 };
 	GLuint tex_ir_map_{ 0 };
+
+	int shadow_width_{ 4096 }; // shadow map resolution
+	int shadow_height_{ shadow_width_ };
+	GLuint fbo_shadow_map_{ 0 }; // shadow mapping FBO
+	GLuint tex_shadow_map_{ 0 }; // shadow map texture
+	GLuint shadow_program_{ 0 }; // collection of shadow mapping shaders
+	GLuint shadow_vertex_shader_;
+	GLuint shadow_fragment_shader_;
+
+	Light light_;
 
 	GLFWwindow* window;
 	int no_triangles;

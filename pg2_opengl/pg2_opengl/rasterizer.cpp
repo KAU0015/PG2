@@ -26,7 +26,7 @@ Rasterizer::Rasterizer(const int width, const int height, float fov, Vector3 eye
 	n_ = n;
 	f_ = f;
 	camera_ = Camera(width, height,  fov, eye, target, n, f);
-	//mouse_ = new Mouse(camera_);
+	light_ =Light(shadow_width_, shadow_height_, fov, Vector3(20, -100,1000), Vector3(0, 0, 0), 10, 1100);
 }
 
 void framebuffer_resize_callback(GLFWwindow* window, int width, int height)
@@ -165,6 +165,51 @@ void Rasterizer::InitPrograms() {
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+}
+
+void Rasterizer::InitShadowPrograms() {
+
+	shadow_vertex_shader_ = glCreateShader(GL_VERTEX_SHADER);
+	const char* vertex_shader_source = LoadShader("shadow_shader.vert");
+	glShaderSource(shadow_vertex_shader_, 1, &vertex_shader_source, nullptr);
+	glCompileShader(shadow_vertex_shader_);
+	SAFE_DELETE_ARRAY(vertex_shader_source);
+	CheckShader(shadow_vertex_shader_);
+
+	shadow_fragment_shader_ = glCreateShader(GL_FRAGMENT_SHADER);
+	const char* fragment_shader_source = LoadShader("shadow_shader.frag");
+	glShaderSource(shadow_fragment_shader_, 1, &fragment_shader_source, nullptr);
+	glCompileShader(shadow_fragment_shader_);
+	SAFE_DELETE_ARRAY(fragment_shader_source);
+	CheckShader(shadow_fragment_shader_);
+
+	shadow_program_ = glCreateProgram();
+	glAttachShader(shadow_program_, shadow_vertex_shader_);
+	glAttachShader(shadow_program_, shadow_fragment_shader_);
+	glLinkProgram(shadow_program_);
+	// TODO check linking
+	glUseProgram(shadow_program_);
+
+
+	/*glPointSize(10.0f);
+	glLineWidth(2.0f);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+
+	// TODO Dopsano přednáška 5
+	// Vypnutí vykreslování trianglů, které nemůžou být viděny z pozice camery
+	glFrontFace(GL_CCW);
+	glCullFace(GL_BACK);
+	glDisable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
+
+	glProvokingVertex(GL_LAST_VERTEX_CONVENTION);
+
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);*/
 
 }
 
@@ -400,6 +445,30 @@ void Rasterizer::InitBuffers() {
 	glEnableVertexAttribArray(5);
 }
 
+void Rasterizer::InitShadowDepthbuffer() // must be called before we enter the main render loop
+{
+	glGenTextures(1, &tex_shadow_map_); // texture to hold the depth values from the light's perspective
+	glBindTexture(GL_TEXTURE_2D, tex_shadow_map_);
+	// GL_DEPTH_COMPONENT ... each element is a single depth value. The GL converts it to floating point, multiplies by the signed scale
+	// factor GL_DEPTH_SCALE, adds the signed bias GL_DEPTH_BIAS, and clamps to the range [0, 1] – this will be important later
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, shadow_width_, shadow_height_, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+	const float color[] = { 1.0f, 1.0f, 1.0f, 1.0f }; // areas outside the light's frustum will be lit
+	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, color);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glGenFramebuffers(1, &fbo_shadow_map_); // new frame buffer
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo_shadow_map_);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, tex_shadow_map_, 0); // attach the texture as depth
+	glDrawBuffer(GL_NONE); // we dont need any color buffer during the first pass
+	glBindFramebuffer(GL_FRAMEBUFFER, 0); // bind the default framebuffer back
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		printf("Problem with framebuffer!\n");
+}
+
 void Rasterizer::MainLoop() {
 
 	
@@ -431,15 +500,37 @@ void Rasterizer::MainLoop() {
 
 		camera_.processInput(window, deltaTime);
 		camera_.Update();
+	//	light_.Update();
 		
 
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // sc_str()tate setting function
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // state using function
 
+
+		glUseProgram(shadow_program_);
+		glViewport(0, 0, shadow_width_, shadow_height_);
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo_shadow_map_);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		// set up the light source through the MLP matrix
+		Matrix4x4 mlp = light_.projection() * light_.view() * model;
+		SetMatrix4x4(shadow_program_, mlp.data(), "mlp");
+		// draw the scene
+		glBindVertexArray(vao_);
+		glDrawArrays(GL_TRIANGLES, 0, number_of_verticies_ * 3);
+		glBindVertexArray(0);
+
+		/*
+		* FIBITMAP* bitmap = FreeImage_Allocate(shadow_width_, shadow_height_, 24);
+		glReadBuffer(GL_COLOR_ATTACHMENT1); // source color buffer
+		glReadPixels(0, 0, shadow_width_, shadow_height_, GL_RGBA, GL_FLOAT, bitmap->data);
+		FreeImage_Save(FIF_PNG, bitmap,  "test2.png", 0);
+		*/
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, camera_.width(), camera_.height());
 		glUseProgram(shader_program_);
 
 		Matrix4x4 view = camera_.view();
-
 		Matrix4x4 mvp = camera_.projection() * view * model;
 
 		Matrix4x4 mvn =  model;
@@ -451,14 +542,17 @@ void Rasterizer::MainLoop() {
 		SetMatrix4x4(shader_program_, (model).data(), "mv");
 		SetVector3(shader_program_, camera_.viewFrom(), "viewPos");
 
+		SetMatrix4x4(shader_program_, mlp.data(), "mlp");
+		// and also don't forget to set the sampler of the shadow map before entering rendering loop
+		glActiveTexture(GL_TEXTURE3);
+		glBindTexture(GL_TEXTURE_2D, tex_shadow_map_);
+		SetSampler(shader_program_, 3, "shadow_map");
+
 		glBindVertexArray(vao_);
 		glBindVertexArray(vbo_);
 
 		//Draw triangles
 		glDrawArrays(GL_TRIANGLES, 0, number_of_verticies_ *3);
-	//	glDrawArrays(GL_POINTS, 0, number_of_verticies_*3);
-		//glDrawArrays(GL_LINE_LOOP, 0, number_of_verticies_ * 3);
-		//glDrawElements( GL_TRIANGLES, no_of_verticies * 3, GL_UNSIGNED_INT, 0 ); // optional - render from an index buffer
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

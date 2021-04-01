@@ -12,10 +12,12 @@ float degTorad(float degree)
 /* create a window and initialize OpenGL context */
 int tutorial_1( const int width, const int height )
 {
-	Rasterizer rasterizer(1600, 900, degTorad(45.0f), Vector3(200, 100, 100), Vector3(0, 0.0f, 30.0f), 0.1f, 2000.0f);
+	Rasterizer rasterizer(1600, 900, degTorad(45.0f), Vector3(10, 20, 500), Vector3(0, 0.0f, 0.0f), 0.1f, 2000.0f);
 	//Rasterizer rasterizer(1600, 900, degTorad(45.0f), Vector3(40, -30, 50), Vector3(0, 0, 0), 0.1f, 1000.0f);
 	rasterizer.InitDevice();
 	rasterizer.InitPrograms();
+	rasterizer.InitShadowPrograms();
+	rasterizer.InitShadowDepthbuffer();
 	rasterizer.LoadScene("../../data/6887_allied_avenger/6887_allied_avenger_gi2.obj");
 	//rasterizer.LoadScene("../../data/test_scene_whitted.obj");
 	//rasterizer.LoadScene("../../data/piece_02/piece_02.obj");

@@ -13,6 +13,8 @@ uniform mat4 mvp;
 uniform mat4 mvn;
 uniform mat4 mv;
 uniform vec3 viewPos;
+uniform mat4 mlp;
+
 
 
 out vec3 out_normal;
@@ -21,6 +23,7 @@ out vec3 out_ambient;
 out vec3 out_diffuse;
 out vec3 out_specular;
 out vec2 out_tex_coord;
+out vec3 position_lcs;
 
 
 
@@ -35,6 +38,9 @@ void main( void )
 	float cos_theta_o = dot(out_normal, omega_o);
 
 	out_normal = (cos_theta_o < 0.0) ? -out_normal : out_normal;
+
+	vec4 tmp = mlp * vec4( position, 1.0f );
+	position_lcs = tmp.xyz / tmp.w;
 
 	out_tex_coord = tex_coord;
 	out_ambient = ambient;

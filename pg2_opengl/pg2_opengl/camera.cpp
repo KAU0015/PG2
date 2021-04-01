@@ -280,3 +280,18 @@ void Camera::updateCameraVectors()
 
 	view_at_ = result + view_from_;
 }
+
+
+int Camera::width() {
+	return width_;
+}
+
+int Camera::height() {
+	return height_;
+}
+
+void Camera::Update(int width, int height) {
+	width_ = width;
+	height_ = height;
+	Update();
+}

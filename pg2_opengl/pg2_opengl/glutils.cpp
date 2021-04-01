@@ -61,3 +61,14 @@ void SetInt(const GLuint program, const GLint data, const char* name)
 		glUniform1i(location, data);
 	}
 }
+
+void SetSampler(const GLuint program, GLenum texture_unit, const char* sampler_name) {
+	const GLint location = glGetUniformLocation(program, sampler_name);
+	if (location == -1) {
+		printf("Texture sampler '%s' not found in active shader.\n", sampler_name);
+	}
+	else {
+		glUniform1i(location, texture_unit);
+	}
+}
+

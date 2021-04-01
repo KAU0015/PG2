@@ -10,4 +10,6 @@ void SetHandle(const GLuint program, GLuint64 texture_handle, const char* sample
 
 void SetInt(const GLuint program, const GLint data, const char* name);
 
+void SetSampler(const GLuint program, GLenum texture_unit, const char* sampler_name);
+
 #endif
