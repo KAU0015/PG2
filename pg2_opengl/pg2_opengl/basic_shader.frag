@@ -80,7 +80,7 @@ void main( void ) {
     vec3 V = normalize(viewPos - out_position);
     vec3 R = reflect(-V, N); 
 
-	float bias = 0.001f;
+	float bias = 0.000055f;
 
 	/*vec2 a_tc = ( position_lcs.xy + vec2( 1.0f ) ) * 0.5f;
 	float depth = texture( shadow_map, a_tc ).r;
