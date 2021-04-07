@@ -1,21 +1,21 @@
 #include "pch.h"
 #include "surface.h"
 
-Surface * BuildSurface( const std::string & name, std::vector<Vertex> & face_vertices )
+Surface* BuildSurface(const std::string& name, std::vector<Vertex>& face_vertices)
 {
-	const int no_vertices = static_cast< int >( face_vertices.size() );
+	const int no_vertices = static_cast<int>(face_vertices.size());
 
-	assert( ( no_vertices > 0 ) && ( no_vertices % 3 == 0 ) );
+	assert((no_vertices > 0) && (no_vertices % 3 == 0));
 
 	const int no_triangles = no_vertices / 3;
 
-	Surface * surface = new Surface( name, no_triangles );
+	Surface* surface = new Surface(name, no_triangles);
 
 	// kopírování dat
-	for ( int i = 0; i < no_triangles; ++i )
-	{		
-		surface->get_triangles()[i] = Triangle( face_vertices[i * 3],
-			face_vertices[i * 3 + 1], face_vertices[i * 3 + 2], surface );
+	for (int i = 0; i < no_triangles; ++i)
+	{
+		surface->get_triangles()[i] = Triangle(face_vertices[i * 3],
+			face_vertices[i * 3 + 1], face_vertices[i * 3 + 2], surface);
 	}
 
 	return surface;
@@ -27,9 +27,9 @@ Surface::Surface()
 	triangles_ = NULL;
 }
 
-Surface::Surface( const std::string & name, const int n )
+Surface::Surface(const std::string& name, const int n)
 {
-	assert( n > 0 );
+	assert(n > 0);
 
 	name_ = name;
 
@@ -39,7 +39,7 @@ Surface::Surface( const std::string & name, const int n )
 
 Surface::~Surface()
 {
-	if ( triangles_ )
+	if (triangles_)
 	{
 		delete[] triangles_;
 		triangles_ = nullptr;
@@ -47,12 +47,12 @@ Surface::~Surface()
 	n_ = 0;
 }
 
-Triangle & Surface::get_triangle( const int i )
+Triangle& Surface::get_triangle(const int i)
 {
 	return triangles_[i];
 }
 
-Triangle * Surface::get_triangles()
+Triangle* Surface::get_triangles()
 {
 	return triangles_;
 }
@@ -72,12 +72,12 @@ int Surface::no_vertices()
 	return 3 * n_;
 }
 
-void Surface::set_material( Material * material )
+void Surface::set_material(Material* material)
 {
 	material_ = material;
 }
 
-Material * Surface::get_material() const
+Material* Surface::get_material() const
 {
 	return material_;
 }

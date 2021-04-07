@@ -7,7 +7,8 @@ layout (location = 2) in vec3 ambient;
 layout (location = 3) in vec3 diffuse;
 layout (location = 4) in vec3 specular;
 layout (location = 5) in vec2 tex_coord;
-//layout (location = 6) in vec3 tangent;
+layout (location = 6) in vec3 tangent;
+layout (location = 7) in float material_index;
 
 uniform mat4 mvp;
 uniform mat4 mvn;
@@ -25,6 +26,8 @@ out vec3 out_specular;
 out vec2 out_tex_coord;
 out vec3 position_lcs;
 
+flat out int out_material_index;
+out mat3 out_TBN;
 
 
 void main( void )
@@ -42,8 +45,17 @@ void main( void )
 	vec4 tmp = mlp * vec4( position, 1.0f );
 	position_lcs = tmp.xyz / tmp.w;
 
-	out_tex_coord = tex_coord;
+	out_tex_coord =  vec2(tex_coord.x, 1.0 - tex_coord.y);
 	out_ambient = ambient;
 	out_diffuse= diffuse;
 	out_specular = specular;
+
+	out_material_index = int(material_index);
+
+	vec3 T = normalize(tangent);
+	vec3 N = normalize(normal);
+	vec3 B = normalize(cross(N, T));
+	if(dot(cross(N, T), B) < 0)
+		T = -T;
+	out_TBN = mat3(T, B, N);
 }

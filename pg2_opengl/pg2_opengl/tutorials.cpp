@@ -18,9 +18,9 @@ int tutorial_1( const int width, const int height )
 	rasterizer.InitPrograms();
 	rasterizer.InitShadowPrograms();
 	rasterizer.InitShadowDepthbuffer();
-	rasterizer.LoadScene("../../data/6887_allied_avenger/6887_allied_avenger_gi2.obj");
+	//rasterizer.LoadScene("../../data/6887_allied_avenger/6887_allied_avenger_gi2.obj");
 	//rasterizer.LoadScene("../../data/test_scene_whitted.obj");
-	//rasterizer.LoadScene("../../data/piece_02/piece_02.obj");
+	rasterizer.LoadScene("../../data/piece_02/piece_02.obj");
 	rasterizer.InitBuffers();
 	rasterizer.InitIrradianceMap("../../data/lebombo_irradiance_map.exr");
 	rasterizer.InitPrefilteredEnvMap({

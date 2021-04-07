@@ -25,8 +25,8 @@ Rasterizer::Rasterizer(const int width, const int height, float fov, Vector3 eye
 	target_ = target;
 	n_ = n;
 	f_ = f;
-	camera_ = Camera(width, height,  fov, eye, target, n, f);
-	light_ =Light(shadow_width_, shadow_height_, fov, Vector3(20, -100,1000), Vector3(0, 0, 0), 10, 1100);
+	camera_ = Camera(width, height, fov, eye, target, n, f);
+	light_ = Light(shadow_width_, shadow_height_, fov, Vector3(0, -80, 1000), Vector3(0, 0, 0), 10, 1100);
 }
 
 void framebuffer_resize_callback(GLFWwindow* window, int width, int height)
@@ -52,7 +52,7 @@ void GLAPIENTRY gl_callback(GLenum source, GLenum type, GLuint id, GLenum severi
 		type, severity, message);
 }
 
-extern void cursor_pos_callback(GLFWwindow * window, double mouseX, double mouseY)
+extern void cursor_pos_callback(GLFWwindow* window, double mouseX, double mouseY)
 {
 	((Camera*)(glfwGetWindowUserPointer(window)))->mouseMovement(window, mouseX, mouseY);
 }
@@ -65,7 +65,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 
 
 int Rasterizer::InitDevice() {
-	
+
 
 	glfwSetErrorCallback(glfw_callback);
 
@@ -310,6 +310,7 @@ void Rasterizer::LoadScene(const char* file_name) {
 
 				Material* material = surface->get_material();
 
+
 				Color3f ambient = material->ambient_;
 				Color3f diffuse = material->diffuse_;
 				Color3f specular = material->specular_;
@@ -327,20 +328,28 @@ void Rasterizer::LoadScene(const char* file_name) {
 				object_data_.push_back(specular.data[1]);
 				object_data_.push_back(specular.data[2]);
 
-				
+
 				Coord2f uv = vertex.texture_coords[0];
 
 				object_data_.push_back(uv.u);
 				object_data_.push_back(uv.v);
 
+				Vector3 tangent = vertex.tangent;
+				object_data_.push_back(tangent.x);
+				object_data_.push_back(tangent.y);
+				object_data_.push_back(tangent.z);
+
+				int indx = material->material_index_;
+				object_data_.push_back(indx);
 
 
-			//	Texture3f texture = 
 
-				
-				// Push texture coords
-				//vertex_data.push_back(vertex.texture_coords->u);
-				//vertex_data.push_back(vertex.texture_coords->v);
+				//	Texture3f texture = 
+
+
+					// Push texture coords
+					//vertex_data.push_back(vertex.texture_coords->u);
+					//vertex_data.push_back(vertex.texture_coords->v);
 			}
 		}
 	}
@@ -351,20 +360,21 @@ void Rasterizer::LoadScene(const char* file_name) {
 	vertices_length_ = object_data_.size() * sizeof(GLfloat);
 
 
-	GLMaterialPBR* gl_materials = new GLMaterialPBR[materials_.size()];
+	GLMaterial* gl_materials = new GLMaterial[materials_.size()];
 	int m = 0;
 	for (const auto& material : materials_) {
 		Texture3u* tex_diffuse = material->texture(Material::kDiffuseMapSlot);
-		gl_materials[m].diffuse = material->diffuse_;
 
 		if (tex_diffuse) {
 			GLuint id = 0;
 			CreateBindlessTexture(id, gl_materials[m].tex_diffuse_handle, tex_diffuse->width(), tex_diffuse->height(), (GLubyte*)tex_diffuse->data());
+			gl_materials[m].diffuse = Color3f({ 1.0f, 1.0f, 1.0f });
 		}
 		else {
 			GLuint id = 0;
 			GLubyte data[] = { 255, 255, 255, 255 }; // opaque white
 			CreateBindlessTexture(id, gl_materials[m].tex_diffuse_handle, 1, 1, data); // white texture
+			gl_materials[m].diffuse = material->diffuse();
 		}
 		Texture3u* tex_norm = material->texture(Material::kNormalMapSlot);
 		if (tex_norm) {
@@ -378,7 +388,7 @@ void Rasterizer::LoadScene(const char* file_name) {
 			CreateBindlessTexture(id, gl_materials[m].tex_normal_handle, 1, 1, data); // white texture
 			gl_materials[m].normal = Color3f({ 1.f, 1.f, 1.f });
 		}
-		Texture3u* tex_rma = material->texture(Material::kRoughnessMapSlot);
+		Texture3u* tex_rma = material->texture(Material::kRmaMapSlot);
 		if (tex_rma) {
 			GLuint id = 0;
 			CreateBindlessTexture(id, gl_materials[m].tex_rma_handle, tex_rma->width(), tex_rma->height(), (GLubyte*)tex_rma->data());
@@ -396,7 +406,7 @@ void Rasterizer::LoadScene(const char* file_name) {
 	GLuint ssbo_materials = 0;
 	glGenBuffers(1, &ssbo_materials);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo_materials);
-	const GLsizeiptr gl_materials_size = sizeof(GLMaterialPBR) * materials_.size();
+	const GLsizeiptr gl_materials_size = sizeof(GLMaterial) * materials_.size();
 	glBufferData(GL_SHADER_STORAGE_BUFFER, gl_materials_size, gl_materials, GL_STATIC_DRAW);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, ssbo_materials);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
@@ -404,7 +414,7 @@ void Rasterizer::LoadScene(const char* file_name) {
 }
 
 
-void Rasterizer::CreateBindlessTexture(GLuint& texture, GLuint64& handle, const int width, const int height, unsigned char* data)
+void Rasterizer::CreateBindlessTexture(GLuint& texture, GLuint64& handle, const int width, const int height, const GLvoid* data)
 {
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture); // bind empty texture object to the target
@@ -412,11 +422,11 @@ void Rasterizer::CreateBindlessTexture(GLuint& texture, GLuint64& handle, const 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_NEAREST);
 	// copy data from the host buffer
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR, GL_UNSIGNED_BYTE, data);
 	glGenerateMipmap(GL_TEXTURE_2D);
-	//glBindTexture(GL_TEXTURE_2D, 0); // unbind the newly created texture from the target
+	glBindTexture(GL_TEXTURE_2D, 0); // unbind the newly created texture from the target
 	handle = glGetTextureHandleARB(texture); // produces a handle representing the texture in a shader function
 	glMakeTextureHandleResidentARB(handle);
 }
@@ -433,7 +443,7 @@ void Rasterizer::InitBuffers() {
 	// vertex position
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertex_stride_, 0);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, vertex_stride_, (void*)(sizeof(GLfloat)*3));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, vertex_stride_, (void*)(sizeof(GLfloat) * 3));
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, vertex_stride_, (void*)(sizeof(GLfloat) * 6));
 	glEnableVertexAttribArray(2);
@@ -443,6 +453,10 @@ void Rasterizer::InitBuffers() {
 	glEnableVertexAttribArray(4);
 	glVertexAttribPointer(5, 2, GL_FLOAT, GL_FALSE, vertex_stride_, (void*)(sizeof(GLfloat) * 15));
 	glEnableVertexAttribArray(5);
+	glVertexAttribPointer(6, 3, GL_FLOAT, GL_FALSE, vertex_stride_, (void*)(sizeof(GLfloat) * 17));
+	glEnableVertexAttribArray(6);
+	glVertexAttribPointer(7, 1, GL_FLOAT, GL_FALSE, vertex_stride_, (void*)(sizeof(GLfloat) * 20));
+	glEnableVertexAttribArray(7);
 }
 
 void Rasterizer::InitShadowDepthbuffer() // must be called before we enter the main render loop
@@ -471,7 +485,7 @@ void Rasterizer::InitShadowDepthbuffer() // must be called before we enter the m
 
 void Rasterizer::MainLoop() {
 
-	
+
 
 	// Turn off VSYNC
 	glfwSwapInterval(1);
@@ -490,9 +504,9 @@ void Rasterizer::MainLoop() {
 		nbFrames++;
 		float deltaTime = currentTime - lastTime;
 
-		if ( deltaTime >= 1.0) { // If last prinf() was more than 1 sec ago
+		if (deltaTime >= 1.0) { // If last prinf() was more than 1 sec ago
 			// printf and reset timer
-			std::printf("%f ms/frame\n", 1000.0 / double(nbFrames));
+		//	std::printf("%f ms/frame\n", 1000.0 / double(nbFrames));
 			nbFrames = 0;
 			lastTime += 1.0;
 		}
@@ -500,8 +514,8 @@ void Rasterizer::MainLoop() {
 
 		camera_.processInput(window, deltaTime);
 		camera_.Update();
-	//	light_.Update();
-		
+		//	light_.Update();
+
 
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // sc_str()tate setting function
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT); // state using function
@@ -533,7 +547,7 @@ void Rasterizer::MainLoop() {
 		Matrix4x4 view = camera_.view();
 		Matrix4x4 mvp = camera_.projection() * view * model;
 
-		Matrix4x4 mvn =  model;
+		Matrix4x4 mvn = model;
 		mvn.EuclideanInverse();
 		mvn.Transpose();
 
@@ -552,7 +566,7 @@ void Rasterizer::MainLoop() {
 		glBindVertexArray(vbo_);
 
 		//Draw triangles
-		glDrawArrays(GL_TRIANGLES, 0, number_of_verticies_ *3);
+		glDrawArrays(GL_TRIANGLES, 0, number_of_verticies_ * 3);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -569,7 +583,7 @@ void Rasterizer::MainLoop() {
 	glfwTerminate();
 
 	printf("Safely terminated.");
-	
+
 }
 
 void Rasterizer::InitIrradianceMap(const char* file_name) {

@@ -19,7 +19,7 @@ using namespace std;
 class Rasterizer {
 
 public:
-	Rasterizer(const int width, const int height,  float fov, Vector3 eye, Vector3 target, float n, float f);
+	Rasterizer(const int width, const int height, float fov, Vector3 eye, Vector3 target, float n, float f);
 
 	int InitDevice();
 	void InitPrograms();
@@ -35,7 +35,7 @@ public:
 	char* LoadShader(const char* file_name);
 	GLint CheckShader(const GLenum shader);
 
-	void CreateBindlessTexture(GLuint& texture, GLuint64& handle, const int width, const int height, unsigned char* data);
+	void  CreateBindlessTexture(GLuint& texture, GLuint64& handle, const int width, const int height, const GLvoid* data);
 	void InitShadowDepthbuffer();
 	int Resize(const int width, const int height);
 
@@ -60,7 +60,7 @@ private:
 	GLuint vao_ = 0;
 	GLuint vbo_ = 0;
 	GLuint ebo_ = 0;
-	
+
 	GLuint64 handle_brdf_map_{ 0 };
 	GLuint64 handle_env_map_{ 0 };
 	GLuint64 handle_ir_map_{ 0 };
@@ -69,7 +69,7 @@ private:
 	GLuint tex_env_map_{ 0 };
 	GLuint tex_ir_map_{ 0 };
 
-	int shadow_width_{ 4096 }; // shadow map resolution
+	int shadow_width_{ 2048 }; // shadow map resolution
 	int shadow_height_{ shadow_width_ };
 	GLuint fbo_shadow_map_{ 0 }; // shadow mapping FBO
 	GLuint tex_shadow_map_{ 0 }; // shadow map texture
@@ -91,7 +91,7 @@ private:
 	int vertex_stride_ = 0;
 
 
-	
+
 
 
 };
